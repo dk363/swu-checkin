@@ -33,11 +33,11 @@ OAUTH_GOTO_BASE64 = "aHR0cDovL2lkbS5zd3UuZWR1LmNuL2FtL29hdXRoMi9hdXRob3JpemU/c2V
 def mask_sensitive_data(data: str, show_chars: int = 4) -> str:
     """
     脱敏处理敏感数据
-    
+
     Args:
         data: 敏感字符串
         show_chars: 显示的字符数（前后各显示一半）
-    
+
     Returns:
         脱敏后的字符串，例如：abc***xyz
     """
@@ -48,16 +48,20 @@ def mask_sensitive_data(data: str, show_chars: int = 4) -> str:
     return f"{data[:half]}{'*' * (len(data) - show_chars)}{data[-half:]}"
 
 
-def safe_print(message: str, sensitive_keywords: list[str] = None) -> None:
+def _is_debug_mode() -> bool:
+    return os.getenv("SWU_DEBUG_CREDENTIALS") == "1" or os.getenv("SWUDK_DEBUG_CREDENTIALS") == "1"
+
+
+def safe_print(message: str, sensitive_keywords: list[str] | None = None) -> None:
     """
     安全打印，自动脱敏敏感信息
-    
+
     Args:
         message: 要打印的消息
-        sensitive_keywords: 敏感关键词列表（如 token、ticket）
+        sensitive_keywords: 敏感关键词列表 (如 token, ticket)
     """
     # 在非调试模式下，不输出包含敏感信息的日志
-    if os.getenv("SWUDK_DEBUG_CREDENTIALS") != "1":
+    if not _is_debug_mode():
         if sensitive_keywords:
             for keyword in sensitive_keywords:
                 if keyword.lower() in message.lower():
@@ -67,12 +71,12 @@ def safe_print(message: str, sensitive_keywords: list[str] = None) -> None:
 
 def debug_print(message: object) -> None:
     """
-    调试模式输出（仅在 SWUDK_DEBUG_CREDENTIALS=1 时输出）
-    
-    ⚠️ 警告：调试模式会输出敏感信息（token、密码等），仅用于本地开发
+    调试模式输出 (在 SWU_DEBUG_CREDENTIALS=1 或 SWUDK_DEBUG_CREDENTIALS=1 时输出)
+
+    警告: 调试模式会输出敏感信息 (token, 密码等), 仅用于本地开发
     绝不要在 GitHub Actions 或生产环境中启用此模式
     """
-    if os.getenv("SWUDK_DEBUG_CREDENTIALS") == "1":
+    if _is_debug_mode():
         print(f"[DEBUG] {message}")
 
 
@@ -138,15 +142,15 @@ def parse_code_random(html: str) -> str:
 def recognize_captcha(session: requests.Session, timeout: int = 10, max_attempts: int = 3) -> str:
     """
     OCR 识别验证码，支持重试机制
-    
+
     Args:
         session: requests 会话
         timeout: 超时时间
         max_attempts: 最大尝试次数
-    
+
     Returns:
         识别出的验证码字符串
-    
+
     Raises:
         ValueError: 多次尝试后仍无法识别
     """
@@ -199,7 +203,7 @@ def extract_ticket_from_url(url: str) -> str:
 def get_token(username: str, password: str, timeout: int = 10, session: requests.Session | None = None) -> str:
     """
     执行完整登录流程，获取 fighter-auth-token
-    
+
     流程:
         1. 访问 CAS 登录页，获取 OAuth state
         2. 跳转 IDM 登录页，解析 codeRandom
@@ -209,7 +213,7 @@ def get_token(username: str, password: str, timeout: int = 10, session: requests
         6. 处理身份选择（研究生/本科生）
         7. 从回调 URL 提取 ticket，转换编码
         8. 用 ticket 换取 token
-    
+
     返回:
         成功返回 token，失败返回空字符串
     """
@@ -228,14 +232,14 @@ def _get_token(
 ) -> str:
     """
     内部登录实现，支持验证码错误重试
-    
+
     Args:
         username: 用户名
         password: 密码
         timeout: 超时时间
         max_login_attempts: 最大登录尝试次数（验证码错误时重试）
         session: 可选的复用 requests.Session 实例
-    
+
     Returns:
         成功返回 token，失败返回空字符串
     """

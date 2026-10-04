@@ -25,15 +25,20 @@ DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_RETRY_DELAY = 8
 
 
-def _env_int(name: str, default: int) -> int:
-    raw = os.getenv(name, "").strip()
-    if not raw:
-        return default
-    try:
-        value = int(raw)
-    except ValueError:
-        return default
-    return value if value > 0 else default
+def _env_int(names: list[str] | str, default: int) -> int:
+    if isinstance(names, str):
+        names = [names]
+    for name in names:
+        raw = os.getenv(name, "").strip()
+        if not raw:
+            continue
+        try:
+            value = int(raw)
+            if value > 0:
+                return value
+        except ValueError:
+            continue
+    return default
 
 
 def _check_vacation_enabled(ctx: CheckinContext, timeout: int) -> bool:
@@ -194,9 +199,18 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
         return 4
 
 
-def check_in(username: str, password: str, timeout: int = 10) -> int:
+def check_in(
+    username: str | None = None,
+    password: str | None = None,
+    timeout: int = 10,
+) -> int:
     """
     执行一次宿舍签到。
+
+    参数:
+        username: 校园网账号 (学号)。如果为 None，优先从环境变量 SWU_USERNAME 读取，其次 SWUDK_USERNAME
+        password: 校园网密码。如果为 None，优先从环境变量 SWU_PASSWORD 读取，其次 SWUDK_PASSWORD
+        timeout: 请求超时时间 (秒)，默认 10 秒
 
     返回值:
         0: 今日无签到记录
@@ -206,12 +220,19 @@ def check_in(username: str, password: str, timeout: int = 10) -> int:
         4: 网络错误或数据异常
         5: 请假期间无需签到
     """
+    account_username = username or os.getenv("SWU_USERNAME") or os.getenv("SWUDK_USERNAME")
+    account_password = password or os.getenv("SWU_PASSWORD") or os.getenv("SWUDK_PASSWORD")
+
+    if not account_username or not account_password:
+        print("错误: 未提供账号或密码，且环境变量中未配置 SWU_USERNAME / SWU_PASSWORD")
+        return 3
+
     try:
         # 创建会话上下文，避免一次 action 中重复调用
         ctx = CheckinContext()
 
         # 步骤1: 登录获取 token（只调用一次）
-        ctx.token = get_token(username, password, timeout, session=ctx.session)
+        ctx.token = get_token(account_username, account_password, timeout, session=ctx.session)
         if not ctx.token:
             return 3
 
@@ -243,8 +264,8 @@ def check_in(username: str, password: str, timeout: int = 10) -> int:
 
 
 def check_in_with_retry(
-    username: str,
-    password: str,
+    username: str | None = None,
+    password: str | None = None,
     timeout: int = 10,
     max_attempts: int | None = None,
     retry_delay: int | None = None,
@@ -253,15 +274,22 @@ def check_in_with_retry(
     执行签到，瞬时失败自动重试。
 
     可通过环境变量覆盖：
-        SWUDK_MAX_ATTEMPTS  总尝试次数，默认 3
-        SWUDK_RETRY_DELAY   首次重试等待秒数，之后指数退避，默认 8
+        SWU_MAX_ATTEMPTS / SWUDK_MAX_ATTEMPTS  总尝试次数，默认 3
+        SWU_RETRY_DELAY / SWUDK_RETRY_DELAY    首次重试等待秒数，之后指数退避，默认 8
     """
-    attempts = max_attempts or _env_int("SWUDK_MAX_ATTEMPTS", DEFAULT_MAX_ATTEMPTS)
-    delay = retry_delay or _env_int("SWUDK_RETRY_DELAY", DEFAULT_RETRY_DELAY)
+    account_username = username or os.getenv("SWU_USERNAME") or os.getenv("SWUDK_USERNAME")
+    account_password = password or os.getenv("SWU_PASSWORD") or os.getenv("SWUDK_PASSWORD")
+
+    if not account_username or not account_password:
+        print("错误: 未提供账号或密码，且环境变量中未配置 SWU_USERNAME / SWU_PASSWORD")
+        return 3
+
+    attempts = max_attempts or _env_int(["SWU_MAX_ATTEMPTS", "SWUDK_MAX_ATTEMPTS"], DEFAULT_MAX_ATTEMPTS)
+    delay = retry_delay or _env_int(["SWU_RETRY_DELAY", "SWUDK_RETRY_DELAY"], DEFAULT_RETRY_DELAY)
     last_result = 4
 
     for attempt in range(1, attempts + 1):
-        last_result = check_in(username, password, timeout)
+        last_result = check_in(account_username, account_password, timeout)
         if last_result not in RETRYABLE_STATUS or attempt >= attempts:
             return last_result
 
@@ -274,8 +302,8 @@ def check_in_with_retry(
 
 
 def main() -> int:
-    username = os.getenv("SWUDK_USERNAME") or input("校园网账号：").strip()
-    password = os.getenv("SWUDK_PASSWORD") or getpass("校园网密码：")
+    username = os.getenv("SWU_USERNAME") or os.getenv("SWUDK_USERNAME") or input("校园网账号: ").strip()
+    password = os.getenv("SWU_PASSWORD") or os.getenv("SWUDK_PASSWORD") or getpass("校园网密码: ")
     result = check_in_with_retry(username, password, 10)
     print(f"[{result}] {STATUS_MESSAGES.get(result, '未知状态')}")
     return 0 if result in {1, 2} else 1

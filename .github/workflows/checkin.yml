@@ -56,9 +56,13 @@ jobs:
       - name: 执行签到
         id: checkin
         env:
+          SWU_USERNAME: ${{ secrets[matrix.account.username_secret] }}
+          SWU_PASSWORD: ${{ secrets[matrix.account.password_secret] }}
           SWUDK_USERNAME: ${{ secrets[matrix.account.username_secret] }}
           SWUDK_PASSWORD: ${{ secrets[matrix.account.password_secret] }}
           # 瞬时失败自动重试：总尝试 3 次，首次等待 8 秒后指数退避
+          SWU_MAX_ATTEMPTS: "3"
+          SWU_RETRY_DELAY: "8"
           SWUDK_MAX_ATTEMPTS: "3"
           SWUDK_RETRY_DELAY: "8"
         run: |
@@ -66,11 +70,13 @@ jobs:
           echo "开始执行签到任务"
           echo "账号名称: ${{ matrix.account.name }}"
           echo "时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
-          if [ -n "$SWUDK_USERNAME" ]; then
+          ACTUAL_USERNAME="${SWU_USERNAME:-$SWUDK_USERNAME}"
+          ACTUAL_PASSWORD="${SWU_PASSWORD:-$SWUDK_PASSWORD}"
+          if [ -n "$ACTUAL_USERNAME" ]; then
             # 短账号禁止显示首尾字符，避免首尾片段重叠后泄露完整账号
             masked_username="****"
-            if [ "${#SWUDK_USERNAME}" -ge 8 ]; then
-              masked_username="${SWUDK_USERNAME:0:2}****${SWUDK_USERNAME: -2}"
+            if [ "${#ACTUAL_USERNAME}" -ge 8 ]; then
+              masked_username="${ACTUAL_USERNAME:0:2}****${ACTUAL_USERNAME: -2}"
             fi
             echo "账号: $masked_username"
           else
@@ -79,7 +85,7 @@ jobs:
           echo "========================================="
           echo ""
           
-          if [ -z "$SWUDK_USERNAME" ] || [ -z "$SWUDK_PASSWORD" ]; then
+          if [ -z "$ACTUAL_USERNAME" ] || [ -z "$ACTUAL_PASSWORD" ]; then
             echo "❌ 账号或密码未配置，跳过签到"
             echo "请在 GitHub Secrets 中配置："
             echo "  - ${{ matrix.account.username_secret }}"

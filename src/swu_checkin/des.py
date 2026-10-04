@@ -170,14 +170,14 @@ def strToBt(s: str):
             k = ord(s[i])
             for j in range(16):
                 powv = 1
-                for m in range(15, j, -1):
+                for _m in range(15, j, -1):
                     powv *= 2
                 bt[16 * i + j] = (k // powv) % 2
         for p in range(leng, 4):
             k = 0
             for q in range(16):
                 powv = 1
-                for m in range(15, q, -1):
+                for _m in range(15, q, -1):
                     powv *= 2
                 bt[16 * p + q] = (k // powv) % 2
     else:
@@ -185,7 +185,7 @@ def strToBt(s: str):
             k = ord(s[i])
             for j in range(16):
                 powv = 1
-                for m in range(15, j, -1):
+                for _m in range(15, j, -1):
                     powv *= 2
                 bt[16 * i + j] = (k // powv) % 2
     return bt
@@ -218,7 +218,7 @@ def byteToString(byteData):
         count = 0
         for j in range(16):
             powv = 1
-            for m in range(15, j, -1):
+            for _m in range(15, j, -1):
                 powv *= 2
             count += byteData[16 * i + j] * powv
         if count != 0:
@@ -418,7 +418,7 @@ def generateKeys(keyByte):
     loop = [1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1]
 
     for i in range(7):
-        for j, k in zip(range(8), range(7, -1, -1)):
+        for j, k in zip(range(8), range(7, -1, -1), strict=True):
             key[i * 8 + j] = keyByte[8 * k + i]
 
     for i in range(16):
