@@ -56,6 +56,7 @@ jobs:
       - name: 执行签到
         id: checkin
         env:
+          TZ: Asia/Shanghai
           SWU_USERNAME: ${{ secrets[matrix.account.username_secret] }}
           SWU_PASSWORD: ${{ secrets[matrix.account.password_secret] }}
           SWUDK_USERNAME: ${{ secrets[matrix.account.username_secret] }}

@@ -3,11 +3,14 @@ import os
 import time
 from datetime import datetime
 from getpass import getpass
+from zoneinfo import ZoneInfo
 
 import requests
 
 from .cache import CheckinContext
 from .get_info import get_dormitory, get_student_id, get_token, get_transition_today
+
+BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 
 STATUS_MESSAGES = {
     0: "今日无签到记录",
@@ -23,6 +26,31 @@ STATUS_MESSAGES = {
 RETRYABLE_STATUS = {0, 3, 4}
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_RETRY_DELAY = 8
+
+
+def _now_beijing() -> datetime:
+    return datetime.now(BEIJING_TZ)
+
+
+def _parse_beijing_datetime(value: str) -> datetime:
+    """请假接口返回的时间没有时区, 按北京时间解释."""
+    return datetime.strptime(value, "%Y-%m-%d %H:%M").replace(tzinfo=BEIJING_TZ)
+
+
+def _beijing_date_str(now: datetime | None = None) -> str:
+    current = _now_beijing() if now is None else now
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=BEIJING_TZ)
+    return current.astimezone(BEIJING_TZ).strftime("%Y-%m-%d")
+
+
+def _is_on_leave(start_text: str, end_text: str, now: datetime | None = None) -> bool:
+    current = _now_beijing() if now is None else now
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=BEIJING_TZ)
+    start = _parse_beijing_datetime(start_text)
+    end = _parse_beijing_datetime(end_text)
+    return start <= current <= end
 
 
 def _env_int(names: list[str] | str, default: int) -> int:
@@ -58,11 +86,7 @@ def _check_vacation_enabled(ctx: CheckinContext, timeout: int) -> bool:
         if latest.get("lcztmc") != "已同意":
             return False
 
-        now = datetime.now()
-        start = datetime.strptime(latest["kssj"], "%Y-%m-%d %H:%M")
-        end = datetime.strptime(latest["jssj"], "%Y-%m-%d %H:%M")
-
-        return start <= now <= end
+        return _is_on_leave(latest["kssj"], latest["jssj"])
     except (requests.exceptions.RequestException, KeyError, ValueError):
         return False
 
@@ -143,7 +167,7 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
         payload = {
             "id": record_id,
             "formId": form_id,
-            "tsrq": time.strftime("%Y-%m-%d"),
+            "tsrq": _beijing_date_str(),
             "xh": ctx.student_id,
             "qdsj": ["21:00", "23:30"],
             "qsqddd": ctx.building,
