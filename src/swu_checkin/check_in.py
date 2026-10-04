@@ -91,26 +91,78 @@ def _check_vacation_enabled(ctx: CheckinContext, timeout: int) -> bool:
         return False
 
 
+def _as_coordinate(value: object) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number != number:
+        return None
+    return number
+
+
+def _column_coordinates(item: dict) -> tuple[float, float] | None:
+    """经纬度可能在列本身, 也可能嵌在 value 里, 且不再带 prop=qddz."""
+    latitude = _as_coordinate(item.get("latitude"))
+    longitude = _as_coordinate(item.get("longitude"))
+    value = item.get("value")
+    if isinstance(value, dict):
+        if latitude is None:
+            latitude = _as_coordinate(value.get("latitude"))
+        if longitude is None:
+            longitude = _as_coordinate(value.get("longitude"))
+    if latitude is None or longitude is None:
+        return None
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return None
+    return latitude, longitude
+
+
+def _column_text(item: dict) -> str | None:
+    value = item.get("value")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return str(value)
+    return None
+
+
 def _parse_dormitory_data(dormitory_list: list) -> tuple[dict, str, str]:
     """
-    从 getDormitory 返回的 columnList 解析签到数据
+    从 getDormitory 返回的 columnList 解析签到数据.
+    坐标优先取 prop=qddz, 否则取任意带经纬度的列. 接口现在常把坐标放在第一条且不写 prop.
     返回: (位置信息, 宿舍楼名, 房间号)
     """
     location = None
+    fallback_location = None
     building = None
     room = None
+    columns = [item for item in dormitory_list if isinstance(item, dict)]
 
-    for item in dormitory_list:
+    for item in columns:
         prop = item.get("prop", "")
-        if prop == "qddz":
-            location = {
-                "latitude": item.get("latitude"),
-                "longitude": item.get("longitude")
-            }
-        elif prop == "qsqddd":
-            building = item.get("value")
+        coordinates = _column_coordinates(item)
+        if prop == "qddz" and coordinates:
+            location = {"latitude": coordinates[0], "longitude": coordinates[1]}
+        elif coordinates and fallback_location is None:
+            fallback_location = {"latitude": coordinates[0], "longitude": coordinates[1]}
+        if prop == "qsqddd":
+            building = _column_text(item) or building
         elif prop == "qdbj":
-            room = item.get("value")
+            room = _column_text(item) or room
+
+    if location is None:
+        location = fallback_location
+    if building is None and len(columns) > 1:
+        building = _column_text(columns[1])
+    if room is None and len(columns) > 2:
+        room = _column_text(columns[2])
 
     if not all([location, building, room]):
         missing = []
@@ -120,7 +172,8 @@ def _parse_dormitory_data(dormitory_list: list) -> tuple[dict, str, str]:
             missing.append("宿舍楼栋(qsqddd)")
         if not room:
             missing.append("房间号(qdbj)")
-        raise ValueError(f"宿舍信息不完整，缺失字段: {', '.join(missing)}")
+        props = [str(item.get("prop") or "-") for item in columns]
+        raise ValueError(f"宿舍信息不完整，缺失字段: {', '.join(missing)}；现有列: {', '.join(props)}")
 
     return location, building, room
 

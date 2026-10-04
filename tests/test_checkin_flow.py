@@ -16,6 +16,7 @@ from swu_checkin.check_in import (
     _beijing_date_str,
     _check_vacation_enabled,
     _is_on_leave,
+    _parse_dormitory_data,
     _submit_checkin,
     check_in,
     check_in_with_retry,
@@ -297,6 +298,35 @@ def test_captcha_error_detection() -> None:
     print("[PASS] 验证码失败判断不会误伤身份选择页")
 
 
+def test_parse_dormitory_without_qddz_prop() -> None:
+    """坐标列可以不带 prop=qddz, 楼栋和房间仍按列名或顺序读取."""
+    location, building, room = _parse_dormitory_data([
+        {"latitude": "29.8", "longitude": 106.4},
+        {"prop": "qsqddd", "value": "楠园"},
+        {"prop": "qdbj", "value": "101"},
+    ])
+    assert location == {"latitude": 29.8, "longitude": 106.4}
+    assert building == "楠园"
+    assert room == "101"
+
+    location, building, room = _parse_dormitory_data([
+        {"latitude": 29.8, "longitude": 106.4},
+        {"value": "学生园区 1 舍"},
+        {"value": "500 米"},
+    ])
+    assert location["latitude"] == 29.8
+    assert building == "学生园区 1 舍"
+    assert room == "500 米"
+
+    location, building, room = _parse_dormitory_data([
+        {"prop": "qddz", "value": {"latitude": 29.8, "longitude": 106.4}},
+        {"prop": "qsqddd", "value": "楠园"},
+        {"prop": "qdbj", "value": "101"},
+    ])
+    assert location == {"latitude": 29.8, "longitude": 106.4}
+    print("[PASS] 宿舍坐标不依赖 prop=qddz")
+
+
 def test_extract_ticket_stops_at_next_param() -> None:
     """ticket 只取到下一个 &, 不把后续查询参数粘进去."""
     assert extract_ticket_from_url("https://of.swu.edu.cn/cb?ticket=ST-ABC&foo=1") == "ST-ABC"
@@ -314,5 +344,6 @@ if __name__ == "__main__":
     test_check_in_splits_auth_and_network()
     test_get_token_failure_classes()
     test_captcha_error_detection()
+    test_parse_dormitory_without_qddz_prop()
     test_extract_ticket_stops_at_next_param()
     print("[SUCCESS] 签到流程测试通过")
