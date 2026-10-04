@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 def strEnc(data: str, firstKey: str, secondKey: str, thirdKey: str) -> str:
     leng = len(data)
     encData = ""

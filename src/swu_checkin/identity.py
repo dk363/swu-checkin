@@ -5,7 +5,6 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 
-
 _IDENTITY_CODES_RE = re.compile(r"(?:var|let|const)\s+defaultCodes\s*=\s*['\"]([^'\"]*)['\"]")
 
 

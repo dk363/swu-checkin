@@ -1,13 +1,13 @@
-from datetime import datetime
-from getpass import getpass
 import json
 import os
 import time
+from datetime import datetime
+from getpass import getpass
 
 import requests
 
-from .get_info import get_dormitory, get_student_id, get_transition_today, get_token, mask_sensitive_data
 from .cache import CheckinContext
+from .get_info import get_dormitory, get_student_id, get_token, get_transition_today
 
 STATUS_MESSAGES = {
     0: "今日无签到记录",
@@ -40,23 +40,23 @@ def _check_vacation_enabled(ctx: CheckinContext, timeout: int) -> bool:
     """检查是否在请假期间"""
     headers = {"fighter-auth-token": ctx.token}
     url = "https://of.swu.edu.cn/gateway/fighter-baida/api/xsqjxj/listSelfLeaveData?pageNum=1&pageSize=10"
-    
+
     try:
-        response = requests.get(url=url, headers=headers, timeout=timeout)
+        response = ctx.session.get(url=url, headers=headers, timeout=timeout)
         data = response.json().get("data", {})
         records = data.get("records", [])
-        
+
         if not records:
             return False
-        
+
         latest = records[0]
         if latest.get("lcztmc") != "已同意":
             return False
-        
+
         now = datetime.now()
         start = datetime.strptime(latest["kssj"], "%Y-%m-%d %H:%M")
         end = datetime.strptime(latest["jssj"], "%Y-%m-%d %H:%M")
-        
+
         return start <= now <= end
     except (requests.exceptions.RequestException, KeyError, ValueError):
         return False
@@ -70,7 +70,7 @@ def _parse_dormitory_data(dormitory_list: list) -> tuple[dict, str, str]:
     location = None
     building = None
     room = None
-    
+
     for item in dormitory_list:
         prop = item.get("prop", "")
         if prop == "qddz":
@@ -82,7 +82,7 @@ def _parse_dormitory_data(dormitory_list: list) -> tuple[dict, str, str]:
             building = item.get("value")
         elif prop == "qdbj":
             room = item.get("value")
-    
+
     if not all([location, building, room]):
         missing = []
         if not location:
@@ -92,7 +92,7 @@ def _parse_dormitory_data(dormitory_list: list) -> tuple[dict, str, str]:
         if not room:
             missing.append("房间号(qdbj)")
         raise ValueError(f"宿舍信息不完整，缺失字段: {', '.join(missing)}")
-    
+
     return location, building, room
 
 
@@ -105,10 +105,10 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
         # 从上下文获取已缓存的数据
         form_id = ctx.transition["formId"]
         record_id = ctx.transition["id"]
-        
+
         # 如果宿舍信息未缓存，则获取
         if not ctx.has_dormitory_info():
-            dorm_response = get_dormitory(ctx.token, timeout)
+            dorm_response = get_dormitory(ctx.token, timeout, session=ctx.session)
             data_field = dorm_response.get("data") if isinstance(dorm_response, dict) else None
             if not isinstance(data_field, dict):
                 raise ValueError(f"获取宿舍信息异常，返回: {dorm_response}")
@@ -116,25 +116,25 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
             if not column_list:
                 raise ValueError(f"获取宿舍信息 columnList 为空，返回: {dorm_response}")
             location, building, room = _parse_dormitory_data(column_list)
-            
+
             # 缓存到上下文
             ctx.dormitory_data = dorm_response
             ctx.building = building
             ctx.room = room
             ctx.latitude = location["latitude"]
             ctx.longitude = location["longitude"]
-        
+
         # 如果学号未缓存，则获取
         if not ctx.has_student_id():
-            ctx.student_id = get_student_id(ctx.token, timeout)
-        
+            ctx.student_id = get_student_id(ctx.token, timeout, session=ctx.session)
+
         headers = {
             "fighter-auth-token": ctx.token,
             "Content-Type": "application/json;charset=UTF-8"
         }
         url = "https://of.swu.edu.cn/gateway/fighter-baida/api/form-instance/save"
         params = {"formId": form_id, "isSubmitProcess": False}
-        
+
         payload = {
             "id": record_id,
             "formId": form_id,
@@ -163,8 +163,8 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
                 "tip": "当前在签到范围内"
             }
         }
-        
-        response = requests.post(
+
+        response = ctx.session.post(
             url,
             headers=headers,
             params=params,
@@ -185,7 +185,7 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
             return 4
 
         return 1
-        
+
     except requests.exceptions.RequestException as e:
         print(f"签到提交网络异常: {e}")
         return 4
@@ -209,9 +209,9 @@ def check_in(username: str, password: str, timeout: int = 10) -> int:
     try:
         # 创建会话上下文，避免一次 action 中重复调用
         ctx = CheckinContext()
-        
+
         # 步骤1: 登录获取 token（只调用一次）
-        ctx.token = get_token(username, password, timeout)
+        ctx.token = get_token(username, password, timeout, session=ctx.session)
         if not ctx.token:
             return 3
 
@@ -220,7 +220,7 @@ def check_in(username: str, password: str, timeout: int = 10) -> int:
             return 5
 
         # 步骤3: 获取今日签到任务（只调用一次，存入上下文）
-        ctx.transition = get_transition_today(ctx.token, timeout)
+        ctx.transition = get_transition_today(ctx.token, timeout, session=ctx.session)
         if not ctx.transition:
             return 0
 
@@ -231,7 +231,7 @@ def check_in(username: str, password: str, timeout: int = 10) -> int:
         # 步骤5: 执行签到（使用上下文中已缓存的数据）
         result = _submit_checkin(ctx, timeout)
         return result
-        
+
     except (KeyboardInterrupt, SystemExit):
         raise
     except (requests.exceptions.RequestException, KeyError, ValueError, TypeError, json.JSONDecodeError) as e:
