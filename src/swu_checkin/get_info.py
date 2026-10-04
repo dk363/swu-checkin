@@ -26,7 +26,31 @@ TRANSITION_TODAY_URL = "https://of.swu.edu.cn//gateway/fighter-baida/api/cqtj/ge
 # OAuth2 固定参数
 OAUTH_GOTO_BASE64 = "aHR0cDovL2lkbS5zd3UuZWR1LmNuL2FtL29hdXRoMi9hdXRob3JpemU/c2VydmljZT1pbml0U2VydmljZSZyZXNwb25zZV90eXBlPWNvZGUmY2xpZW50X2lkPTdjMXpva29samw5YmJpaG82eXVvJnNjb3BlPXVpZCtjbit1c2VySWRDb2RlJnJlZGlyZWN0X3VyaT1odHRwcyUzQSUyRiUyRnVhYWFwLnN3dS5lZHUuY24lMkZjYXMlMkZsb2dpbiUzRnNlcnZpY2UlM0RodHRwcyUyNTNBJTI1MkYlMjUyRnVhYWFwLnN3dS5lZHUuY24lMjUyRmNhcyUyNTJGb2F1dGgyLjAlMjUyRmNhbGxiYWNrQXV0aG9yaXplJTI2b3JpZ2luYWxSZXF1ZXN0VXJsJTNEaHR0cHMlMjUzQSUyNTJGJTI1MkZ1YWFhcC5zd3UuZWR1LmNuJTI1MkZjYXMlMjUyRm9hdXRoMi4wJTI1MkZhdXRob3JpemUlMjUzRnJlc3BvbnNlX3R5cGUlMjUzRGNvZGUlMjUyNmNsaWVudF9pZCUyNTNEY2FzNiUyNTI2cmVkaXJlY3RfdXJpJTI1M0RodHRwcyUyNTI1M0ElMjUyNTJGJTI1MjUyRm9mLnN3dS5lZHUuY24lMjUyNTNBNDQzJTI1MjUyRmNhcyUyNTI1MkZvYXV0aCUyNTI1MkZjYWxsYmFjayUyNTI1MkZTV1VfQ0FTMl9GRURFUkFMJTI1MjZzdGF0ZSUyNTNEZTFlMTczODhlNzU4MjY3YjFiNzI2ZjM4Mjg0NDM5MWElMjUyNnNjb3BlJTI1M0RzaW1wbGUlMjZmZWRlcmFsRW5hYmxlJTNEdHJ1ZSZkZWNpc2lvbj1BbGxvdw=="
 
+# 只匹配明确的验证码错误, 不匹配登录表单里的字段名 validateCode 或「验证码」标签
+_CAPTCHA_ERROR_MARKERS = (
+    "验证码错误",
+    "验证码不正确",
+    "验证码有误",
+    "验证码失效",
+    "验证码已失效",
+    "验证码过期",
+    "验证码已过期",
+    "验证码不能为空",
+    "验证码为空",
+)
+_IDENTITY_FIELD_RE = re.compile(r"(?:name|id)\s*=\s*['\"]identityDefault['\"]")
 _ocr_instance: ddddocr.DdddOcr | None = None
+
+
+def is_captcha_error_response(response: requests.Response) -> bool:
+    """当前响应仍停在登录页, 且正文是明确的验证码错误时才重试."""
+    url = response.url or ""
+    text = response.text or ""
+    if "/UI/Login" not in url:
+        return False
+    if _IDENTITY_FIELD_RE.search(text):
+        return False
+    return any(marker in text for marker in _CAPTCHA_ERROR_MARKERS)
 
 
 def _get_ocr() -> ddddocr.DdddOcr:
@@ -303,11 +327,11 @@ def _get_token(
                 timeout=timeout
             )
 
-            # 检查是否因验证码错误导致登录失败
-            if "验证码" in response.text or "validateCode" in response.text:
+            # 仍停在登录页且是明确的验证码错误时才整页重试, 身份选择页继续往下走
+            if is_captcha_error_response(response):
                 saw_auth_failure = True
-                safe_print(f"验证码可能错误，重新尝试登录 (尝试 {login_attempt}/{max_login_attempts})", [])
-                time.sleep(1)  # 短暂延迟
+                safe_print(f"验证码可能错误, 重新尝试登录 (尝试 {login_attempt}/{max_login_attempts})", [])
+                time.sleep(1)
                 continue
 
             # 步骤 6: 处理身份选择
