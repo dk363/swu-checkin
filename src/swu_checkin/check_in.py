@@ -84,7 +84,14 @@ def _parse_dormitory_data(dormitory_list: list) -> tuple[dict, str, str]:
             room = item.get("value")
     
     if not all([location, building, room]):
-        raise ValueError("宿舍信息不完整")
+        missing = []
+        if not location:
+            missing.append("经纬度(qddz)")
+        if not building:
+            missing.append("宿舍楼栋(qsqddd)")
+        if not room:
+            missing.append("房间号(qdbj)")
+        raise ValueError(f"宿舍信息不完整，缺失字段: {', '.join(missing)}")
     
     return location, building, room
 
@@ -102,7 +109,12 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
         # 如果宿舍信息未缓存，则获取
         if not ctx.has_dormitory_info():
             dorm_response = get_dormitory(ctx.token, timeout)
-            column_list = dorm_response.get("data", {}).get("columnList", [])
+            data_field = dorm_response.get("data") if isinstance(dorm_response, dict) else None
+            if not isinstance(data_field, dict):
+                raise ValueError(f"获取宿舍信息异常，返回: {dorm_response}")
+            column_list = data_field.get("columnList", [])
+            if not column_list:
+                raise ValueError(f"获取宿舍信息 columnList 为空，返回: {dorm_response}")
             location, building, room = _parse_dormitory_data(column_list)
             
             # 缓存到上下文
@@ -160,11 +172,25 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
             timeout=timeout
         )
         response.raise_for_status()
+
+        res_json = {}
+        try:
+            res_json = response.json()
+            print(f"签到接口响应: {res_json}")
+        except Exception:
+            print(f"签到接口响应文本: {response.text[:200]}")
+
+        if isinstance(res_json, dict) and res_json.get("success") is False:
+            print(f"签到接口提示失败: {res_json.get('msg') or res_json.get('message')}")
+            return 4
+
         return 1
         
-    except requests.exceptions.RequestException:
+    except requests.exceptions.RequestException as e:
+        print(f"签到提交网络异常: {e}")
         return 4
-    except (KeyError, ValueError, TypeError):
+    except (KeyError, ValueError, TypeError) as e:
+        print(f"签到数据解析异常: {type(e).__name__}: {e}")
         return 4
 
 
@@ -208,9 +234,11 @@ def check_in(username: str, password: str, timeout: int = 10) -> int:
         
     except (KeyboardInterrupt, SystemExit):
         raise
-    except (requests.exceptions.RequestException, KeyError, ValueError, TypeError, json.JSONDecodeError):
+    except (requests.exceptions.RequestException, KeyError, ValueError, TypeError, json.JSONDecodeError) as e:
+        print(f"签到主流程异常: {type(e).__name__}: {e}")
         return 4
-    except Exception:
+    except Exception as e:
+        print(f"签到未知异常: {type(e).__name__}: {e}")
         return 4
 
 
