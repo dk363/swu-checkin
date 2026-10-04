@@ -3,12 +3,10 @@ import os
 import re
 import time
 import urllib.parse
-from io import BytesIO
 
 import ddddocr
 import requests
 from bs4 import BeautifulSoup
-from PIL import Image
 
 from .des import des
 from .identity import submit_identity_selection_if_needed
@@ -27,6 +25,16 @@ TRANSITION_TODAY_URL = "https://of.swu.edu.cn//gateway/fighter-baida/api/cqtj/ge
 
 # OAuth2 固定参数
 OAUTH_GOTO_BASE64 = "aHR0cDovL2lkbS5zd3UuZWR1LmNuL2FtL29hdXRoMi9hdXRob3JpemU/c2VydmljZT1pbml0U2VydmljZSZyZXNwb25zZV90eXBlPWNvZGUmY2xpZW50X2lkPTdjMXpva29samw5YmJpaG82eXVvJnNjb3BlPXVpZCtjbit1c2VySWRDb2RlJnJlZGlyZWN0X3VyaT1odHRwcyUzQSUyRiUyRnVhYWFwLnN3dS5lZHUuY24lMkZjYXMlMkZsb2dpbiUzRnNlcnZpY2UlM0RodHRwcyUyNTNBJTI1MkYlMjUyRnVhYWFwLnN3dS5lZHUuY24lMjUyRmNhcyUyNTJGb2F1dGgyLjAlMjUyRmNhbGxiYWNrQXV0aG9yaXplJTI2b3JpZ2luYWxSZXF1ZXN0VXJsJTNEaHR0cHMlMjUzQSUyNTJGJTI1MkZ1YWFhcC5zd3UuZWR1LmNuJTI1MkZjYXMlMjUyRm9hdXRoMi4wJTI1MkZhdXRob3JpemUlMjUzRnJlc3BvbnNlX3R5cGUlMjUzRGNvZGUlMjUyNmNsaWVudF9pZCUyNTNEY2FzNiUyNTI2cmVkaXJlY3RfdXJpJTI1M0RodHRwcyUyNTI1M0ElMjUyNTJGJTI1MjUyRm9mLnN3dS5lZHUuY24lMjUyNTNBNDQzJTI1MjUyRmNhcyUyNTI1MkZvYXV0aCUyNTI1MkZjYWxsYmFjayUyNTI1MkZTV1VfQ0FTMl9GRURFUkFMJTI1MjZzdGF0ZSUyNTNEZTFlMTczODhlNzU4MjY3YjFiNzI2ZjM4Mjg0NDM5MWElMjUyNnNjb3BlJTI1M0RzaW1wbGUlMjZmZWRlcmFsRW5hYmxlJTNEdHJ1ZSZkZWNpc2lvbj1BbGxvdw=="
+
+_ocr_instance: ddddocr.DdddOcr | None = None
+
+
+def _get_ocr() -> ddddocr.DdddOcr:
+    """进程内复用 OCR 模型, 避免每次登录都重新加载."""
+    global _ocr_instance
+    if _ocr_instance is None:
+        _ocr_instance = ddddocr.DdddOcr(show_ad=False, use_gpu=False)
+    return _ocr_instance
 
 
 # ===== 辅助函数 =====
@@ -154,13 +162,12 @@ def recognize_captcha(session: requests.Session, timeout: int = 10, max_attempts
     Raises:
         ValueError: 多次尝试后仍无法识别
     """
-    ocr = ddddocr.DdddOcr(show_ad=False, use_gpu=False)
+    ocr = _get_ocr()
 
     for attempt in range(1, max_attempts + 1):
         try:
             response = session.get(IDM_VALIDATE_CODE_URL, timeout=timeout)
-            img = Image.open(BytesIO(response.content))
-            result = ocr.classification(img)
+            result = ocr.classification(response.content)
 
             # 验证码基本验证：应该是4位数字或字母
             if result and len(result) >= 3:
