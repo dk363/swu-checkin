@@ -222,12 +222,10 @@ def get_token(username: str, password: str, timeout: int = 10, session: requests
         8. 用 ticket 换取 token
 
     返回:
-        成功返回 token，失败返回空字符串
+        成功返回 token. 验证码或认证耗尽返回空字符串.
+        网络耗尽时抛出 requests.exceptions.RequestException, 由外层按状态 4 重试.
     """
-    try:
-        return _get_token(username, password, timeout, session=session)
-    except (requests.exceptions.RequestException, json.JSONDecodeError, KeyError, ValueError, TypeError):
-        return ""
+    return _get_token(username, password, timeout, session=session)
 
 
 def _get_token(
@@ -248,8 +246,12 @@ def _get_token(
         session: 可选的复用 requests.Session 实例
 
     Returns:
-        成功返回 token，失败返回空字符串
+        成功返回 token. 验证码或认证耗尽返回空字符串.
+        全程只有网络异常时, 抛出最后一次 RequestException.
     """
+    saw_auth_failure = False
+    last_network_error: requests.exceptions.RequestException | None = None
+
     for login_attempt in range(1, max_login_attempts + 1):
         try:
             login_session = session if session is not None else requests.Session()
@@ -262,6 +264,7 @@ def _get_token(
             debug_print(f"state: {state}")
 
             if not state:
+                saw_auth_failure = True
                 safe_print(f"获取 OAuth state 失败 (尝试 {login_attempt}/{max_login_attempts})", [])
                 continue
 
@@ -272,6 +275,7 @@ def _get_token(
             debug_print(f"random: {code_random}")
 
             if not code_random:
+                saw_auth_failure = True
                 safe_print(f"解析 codeRandom 失败 (尝试 {login_attempt}/{max_login_attempts})", [])
                 continue
 
@@ -283,6 +287,7 @@ def _get_token(
                 captcha = recognize_captcha(login_session, timeout, max_attempts=3)
                 debug_print(f"验证码: {captcha}")
             except ValueError as e:
+                saw_auth_failure = True
                 safe_print(f"验证码识别失败 (尝试 {login_attempt}/{max_login_attempts}): {e}", [])
                 continue
 
@@ -300,6 +305,7 @@ def _get_token(
 
             # 检查是否因验证码错误导致登录失败
             if "验证码" in response.text or "validateCode" in response.text:
+                saw_auth_failure = True
                 safe_print(f"验证码可能错误，重新尝试登录 (尝试 {login_attempt}/{max_login_attempts})", [])
                 time.sleep(1)  # 短暂延迟
                 continue
@@ -318,6 +324,7 @@ def _get_token(
             # 步骤 7: 提取并转换 ticket
             ticket_st = extract_ticket_from_url(response.url)
             if not ticket_st:
+                saw_auth_failure = True
                 safe_print(f"未能从回调 URL 提取 ticket (尝试 {login_attempt}/{max_login_attempts})", ["ticket"])
                 continue
 
@@ -330,6 +337,7 @@ def _get_token(
             # 步骤 8b: 从最终回调 URL 获取 token ticket
             token_st = extract_ticket_from_url(response.url)
             if not token_st:
+                saw_auth_failure = True
                 safe_print(f"未能获取 token ticket (尝试 {login_attempt}/{max_login_attempts})", ["token"])
                 continue
 
@@ -338,6 +346,7 @@ def _get_token(
             token_response = login_session.get(exchange_url, timeout=timeout).json()
 
             if "data" not in token_response:
+                saw_auth_failure = True
                 safe_print(f"token 交换失败 (尝试 {login_attempt}/{max_login_attempts})", ["token"])
                 continue
 
@@ -346,14 +355,22 @@ def _get_token(
 
             return token
 
-        except (requests.exceptions.RequestException, KeyError, ValueError, TypeError) as e:
+        except requests.exceptions.RequestException as e:
+            last_network_error = e
+            safe_print(f"登录过程网络异常 (尝试 {login_attempt}/{max_login_attempts}): {type(e).__name__}", [])
+            if login_attempt < max_login_attempts:
+                time.sleep(1)
+            continue
+        except (KeyError, ValueError, TypeError) as e:
+            saw_auth_failure = True
             safe_print(f"登录过程异常 (尝试 {login_attempt}/{max_login_attempts}): {type(e).__name__}", [])
             if login_attempt < max_login_attempts:
                 time.sleep(1)
             continue
 
-    # 所有尝试都失败
-    safe_print(f"登录失败，已用尽 {max_login_attempts} 次尝试", [])
+    safe_print(f"登录失败, 已用尽 {max_login_attempts} 次尝试", [])
+    if last_network_error is not None and not saw_auth_failure:
+        raise last_network_error
     return ""
 
 

@@ -21,9 +21,9 @@ STATUS_MESSAGES = {
     5: "请假期间无需签到",
 }
 
-# 终态不重试：成功 / 已签到 / 请假
-# 其余（无记录、登录失败、网络异常）可能是抖动，打满次数才算失败
-RETRYABLE_STATUS = {0, 3, 4}
+# 终态不重试: 成功 / 已签到 / 请假 / 登录失败
+# 登录失败已在 get_token 内重试. 外层只重试任务未生成和网络异常
+RETRYABLE_STATUS = {0, 4}
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_RETRY_DELAY = 8
 
@@ -295,11 +295,14 @@ def check_in_with_retry(
     retry_delay: int | None = None,
 ) -> int:
     """
-    执行签到，瞬时失败自动重试。
+    执行签到, 瞬时失败自动重试.
 
-    可通过环境变量覆盖：
-        SWU_MAX_ATTEMPTS / SWUDK_MAX_ATTEMPTS  总尝试次数，默认 3
-        SWU_RETRY_DELAY / SWUDK_RETRY_DELAY    首次重试等待秒数，之后指数退避，默认 8
+    登录失败 (状态 3) 已在 get_token 内重试, 这里不再重复.
+    外层重试状态 0 (任务未生成) 和状态 4 (网络或提交失败).
+
+    可通过环境变量覆盖:
+        SWU_MAX_ATTEMPTS / SWUDK_MAX_ATTEMPTS  总尝试次数, 默认 3
+        SWU_RETRY_DELAY / SWUDK_RETRY_DELAY    首次重试等待秒数, 之后指数退避, 默认 8
     """
     account_username = username or os.getenv("SWU_USERNAME") or os.getenv("SWUDK_USERNAME")
     account_password = password or os.getenv("SWU_PASSWORD") or os.getenv("SWUDK_PASSWORD")
