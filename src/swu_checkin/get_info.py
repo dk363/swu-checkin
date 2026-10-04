@@ -223,11 +223,12 @@ def build_login_form_data(username: str, password: str, captcha: str) -> dict:
     }
 
 
-def extract_ticket_from_url(url: str) -> str:
-    """从回调 URL 提取 ticket"""
-    if "ticket=" not in url:
+def extract_ticket_from_url(url: str) -> str | None:
+    """从回调 URL 提取 ticket, 截到下一个查询参数为止."""
+    if not url or "ticket=" not in url:
         return None
-    return urllib.parse.unquote(url).split("ticket=")[1]
+    value = urllib.parse.unquote(url).split("ticket=", 1)[1].split("&", 1)[0]
+    return value or None
 
 
 # ===== 主要登录流程 =====
