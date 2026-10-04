@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from .cache import CheckinContext
-from .get_info import get_dormitory, get_student_id, get_token, get_transition_today
+from .get_info import debug_print, get_dormitory, get_student_id, get_token, get_transition_today
 
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 
@@ -205,12 +205,19 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
         res_json = {}
         try:
             res_json = response.json()
-            print(f"签到接口响应: {res_json}")
         except Exception:
-            print(f"签到接口响应文本: {response.text[:200]}")
+            print("签到接口响应无法解析")
+            debug_print(response.text[:200])
+        else:
+            if isinstance(res_json, dict):
+                success = res_json.get("success")
+                message = res_json.get("msg") or res_json.get("message")
+                print(f"签到接口响应: success={success}, msg={message}")
+            else:
+                print("签到接口响应: 非对象结果")
+            debug_print(res_json)
 
         if isinstance(res_json, dict) and res_json.get("success") is False:
-            print(f"签到接口提示失败: {res_json.get('msg') or res_json.get('message')}")
             return 4
 
         return 1
