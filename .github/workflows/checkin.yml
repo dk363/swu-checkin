@@ -1,15 +1,11 @@
 name: 自动签到
 
+# 定时由 Cloudflare Workers 通过 workflow_dispatch 触发
 # 停用方式：仓库 Actions → 自动签到 → Disable workflow
-# GitHub 官方禁用 workflow 后，定时任务和手动触发都会停止
+# GitHub 官方禁用 workflow 后，外部触发和手动触发都会停止
 
 on:
-  schedule:
-    # 每天北京时间 21:15、21:45（UTC 13:15、13:45）
-    # 避开整点高峰，并通过第二次执行降低 GitHub Actions 排队延迟造成的漏打卡概率
-    - cron: '15 13 * * *'
-    - cron: '45 13 * * *'
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:  # 允许 Cloudflare / 手动触发
 
 jobs:
   checkin:
