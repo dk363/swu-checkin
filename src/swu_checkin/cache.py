@@ -34,12 +34,9 @@ class CheckinContext:
 
     def has_dormitory_info(self) -> bool:
         """是否已获取宿舍信息"""
-        return all([
-            self.building is not None,
-            self.room is not None,
-            self.latitude is not None,
-            self.longitude is not None
-        ])
+        return all(
+            [self.building is not None, self.room is not None, self.latitude is not None, self.longitude is not None]
+        )
 
     def has_student_id(self) -> bool:
         """是否已获取学号"""

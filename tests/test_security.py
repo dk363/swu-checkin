@@ -1,6 +1,7 @@
 """
 安全性测试: 确保敏感信息不会泄露到日志
 """
+
 import importlib
 import os
 import sys
@@ -81,6 +82,7 @@ def test_debug_mode_enabled_swu():
     """测试: 启用 SWU_DEBUG_CREDENTIALS 调试模式后的行为"""
     os.environ["SWU_DEBUG_CREDENTIALS"] = "1"
     import swu_checkin.get_info
+
     importlib.reload(swu_checkin.get_info)
     from swu_checkin.get_info import debug_print
 
@@ -104,6 +106,7 @@ def test_debug_mode_enabled_swudk():
     """测试: 兼容旧环境变量 SWUDK_DEBUG_CREDENTIALS 行为"""
     os.environ["SWUDK_DEBUG_CREDENTIALS"] = "1"
     import swu_checkin.get_info
+
     importlib.reload(swu_checkin.get_info)
     from swu_checkin.get_info import debug_print
 

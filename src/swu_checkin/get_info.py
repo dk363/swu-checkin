@@ -121,18 +121,18 @@ def transform_ticket(ticket: str) -> str:
     """
     result = ""
     for char in ticket:
-        if char in '-:/':
+        if char in "-:/":
             result += char
-        elif '0' <= char <= '9':
+        elif "0" <= char <= "9":
             result += str((int(char) + 5) % 10)
-        elif 'A' <= char <= 'Z':
+        elif "A" <= char <= "Z":
             new_ord = ord(char) + 10
-            if new_ord > ord('Z'):
+            if new_ord > ord("Z"):
                 new_ord -= 26
             result += chr(new_ord)
-        elif 'a' <= char <= 'z':
+        elif "a" <= char <= "z":
             new_ord = ord(char) + 15
-            if new_ord > ord('z'):
+            if new_ord > ord("z"):
                 new_ord -= 26
             result += chr(new_ord)
         else:
@@ -160,15 +160,15 @@ def build_idm_login_url(state: str) -> str:
 
 def extract_state_from_url(url: str) -> str:
     """从跳转 URL 提取 state 参数"""
-    match = re.search(r'state%3D([a-f0-9]{32})', url)
+    match = re.search(r"state%3D([a-f0-9]{32})", url)
     return match.group(1) if match else None
 
 
 def parse_code_random(html: str) -> str:
     """从登录页 HTML 解析 codeRandom"""
-    soup = BeautifulSoup(html, 'html.parser')
-    code_random = soup.find('input', {'id': 'codeRandom'})
-    return code_random.get('value') if code_random else None
+    soup = BeautifulSoup(html, "html.parser")
+    code_random = soup.find("input", {"id": "codeRandom"})
+    return code_random.get("value") if code_random else None
 
 
 def recognize_captcha(session: requests.Session, timeout: int = 10, max_attempts: int = 3) -> str:
@@ -219,7 +219,7 @@ def build_login_form_data(username: str, password: str, captcha: str) -> dict:
         "validateCode": captcha,
         "sunQueryParamsString": "cmVhbG09LyZzZXJ2aWNlPWluaXRTZXJ2aWNlJg==",
         "encoded": "true",
-        "gx_charset": "UTF-8"
+        "gx_charset": "UTF-8",
     }
 
 
@@ -317,16 +317,8 @@ def _get_token(
                 continue
 
             # 步骤 5: 提交登录表单
-            form_data = build_login_form_data(
-                encrypted_username,
-                encrypted_password,
-                captcha
-            )
-            response = login_session.post(
-                f"{IDM_BASE_URL}/UI/Login",
-                data=form_data,
-                timeout=timeout
-            )
+            form_data = build_login_form_data(encrypted_username, encrypted_password, captcha)
+            response = login_session.post(f"{IDM_BASE_URL}/UI/Login", data=form_data, timeout=timeout)
 
             # 仍停在登录页且是明确的验证码错误时才整页重试, 身份选择页继续往下走
             if is_captcha_error_response(response):
@@ -403,28 +395,15 @@ def get_student_id(token: str, timeout: int = 10, session: requests.Session | No
     """获取学号"""
     client = session or requests
     headers = {"fighter-auth-token": token}
-    response = client.get(
-        USER_INFO_URL,
-        params={"appType": "fighter-portal"},
-        headers=headers,
-        timeout=timeout
-    )
+    response = client.get(USER_INFO_URL, params={"appType": "fighter-portal"}, headers=headers, timeout=timeout)
     return response.json()["data"]["subject"]["username"]
 
 
 def get_dormitory(token: str, timeout: int = 10, session: requests.Session | None = None) -> dict:
     """获取宿舍信息"""
     client = session or requests
-    headers = {
-        "fighter-auth-token": token,
-        "Content-Type": "application/json;charset=UTF-8"
-    }
-    response = client.post(
-        DORMITORY_URL,
-        headers=headers,
-        data=json.dumps({}),
-        timeout=timeout
-    )
+    headers = {"fighter-auth-token": token, "Content-Type": "application/json;charset=UTF-8"}
+    response = client.post(DORMITORY_URL, headers=headers, data=json.dumps({}), timeout=timeout)
     return response.json()
 
 
@@ -433,12 +412,7 @@ def get_transition_today(token: str, timeout: int = 10, session: requests.Sessio
     client = session or requests
     headers = {"fighter-auth-token": token}
     data = {"pageNum": 1, "pageSize": 1}
-    response = client.post(
-        TRANSITION_TODAY_URL,
-        headers=headers,
-        data=data,
-        timeout=timeout
-    ).json()
+    response = client.post(TRANSITION_TODAY_URL, headers=headers, data=data, timeout=timeout).json()
 
     records = response.get("data", {}).get("records", [])
     return records[0] if records else None

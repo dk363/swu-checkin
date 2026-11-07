@@ -210,10 +210,7 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
         if not ctx.has_student_id():
             ctx.student_id = get_student_id(ctx.token, timeout, session=ctx.session)
 
-        headers = {
-            "fighter-auth-token": ctx.token,
-            "Content-Type": "application/json;charset=UTF-8"
-        }
+        headers = {"fighter-auth-token": ctx.token, "Content-Type": "application/json;charset=UTF-8"}
         url = "https://of.swu.edu.cn/gateway/fighter-baida/api/form-instance/save"
         params = {"formId": form_id, "isSubmitProcess": False}
 
@@ -242,17 +239,11 @@ def _submit_checkin(ctx: CheckinContext, timeout: int) -> int:
                 "cityAdCode": "023",
                 "districtAdCode": "500109",
                 "isArea": True,
-                "tip": "当前在签到范围内"
-            }
+                "tip": "当前在签到范围内",
+            },
         }
 
-        response = ctx.session.post(
-            url,
-            headers=headers,
-            params=params,
-            data=json.dumps(payload),
-            timeout=timeout
-        )
+        response = ctx.session.post(url, headers=headers, params=params, data=json.dumps(payload), timeout=timeout)
         response.raise_for_status()
 
         res_json = {}

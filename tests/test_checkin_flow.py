@@ -300,29 +300,35 @@ def test_captcha_error_detection() -> None:
 
 def test_parse_dormitory_without_qddz_prop() -> None:
     """坐标列可以不带 prop=qddz, 楼栋和房间仍按列名或顺序读取."""
-    location, building, room = _parse_dormitory_data([
-        {"latitude": "29.8", "longitude": 106.4},
-        {"prop": "qsqddd", "value": "楠园"},
-        {"prop": "qdbj", "value": "101"},
-    ])
+    location, building, room = _parse_dormitory_data(
+        [
+            {"latitude": "29.8", "longitude": 106.4},
+            {"prop": "qsqddd", "value": "楠园"},
+            {"prop": "qdbj", "value": "101"},
+        ]
+    )
     assert location == {"latitude": 29.8, "longitude": 106.4}
     assert building == "楠园"
     assert room == "101"
 
-    location, building, room = _parse_dormitory_data([
-        {"latitude": 29.8, "longitude": 106.4},
-        {"value": "学生园区 1 舍"},
-        {"value": "500 米"},
-    ])
+    location, building, room = _parse_dormitory_data(
+        [
+            {"latitude": 29.8, "longitude": 106.4},
+            {"value": "学生园区 1 舍"},
+            {"value": "500 米"},
+        ]
+    )
     assert location["latitude"] == 29.8
     assert building == "学生园区 1 舍"
     assert room == "500 米"
 
-    location, building, room = _parse_dormitory_data([
-        {"prop": "qddz", "value": {"latitude": 29.8, "longitude": 106.4}},
-        {"prop": "qsqddd", "value": "楠园"},
-        {"prop": "qdbj", "value": "101"},
-    ])
+    location, building, room = _parse_dormitory_data(
+        [
+            {"prop": "qddz", "value": {"latitude": 29.8, "longitude": 106.4}},
+            {"prop": "qsqddd", "value": "楠园"},
+            {"prop": "qdbj", "value": "101"},
+        ]
+    )
     assert location == {"latitude": 29.8, "longitude": 106.4}
     print("[PASS] 宿舍坐标不依赖 prop=qddz")
 

@@ -47,7 +47,7 @@ def strEnc(data: str, firstKey: str, secondKey: str, thirdKey: str) -> str:
             iterator = leng // 4
             remainder = leng % 4
             for i in range(iterator):
-                tempData = data[i * 4:(i + 1) * 4]
+                tempData = data[i * 4 : (i + 1) * 4]
                 tempByte = strToBt(tempData)
                 if firstKey and secondKey and thirdKey:
                     tempBt = tempByte
@@ -74,7 +74,7 @@ def strEnc(data: str, firstKey: str, secondKey: str, thirdKey: str) -> str:
                     encByte = tempByte
                 encData += bt64ToHex(encByte)
             if remainder > 0:
-                remainderData = data[iterator * 4:leng]
+                remainderData = data[iterator * 4 : leng]
                 tempByte = strToBt(remainderData)
                 if firstKey and secondKey and thirdKey:
                     tempBt = tempByte
@@ -120,7 +120,7 @@ def strDec(data: str, firstKey: str, secondKey: str, thirdKey: str) -> str:
 
     iterator = leng // 16
     for i in range(iterator):
-        tempData = data[i * 16:(i + 1) * 16]
+        tempData = data[i * 16 : (i + 1) * 16]
         strByte = hexToBt64(tempData)
         intByte = [int(ch) for ch in strByte]
         if firstKey and secondKey and thirdKey:
@@ -156,9 +156,9 @@ def getKeyBytes(key: str):
     iterator = leng // 4
     remainder = leng % 4
     for i in range(iterator):
-        keyBytes.append(strToBt(key[i * 4:(i + 1) * 4]))
+        keyBytes.append(strToBt(key[i * 4 : (i + 1) * 4]))
     if remainder > 0:
-        keyBytes.append(strToBt(key[iterator * 4:leng]))
+        keyBytes.append(strToBt(key[iterator * 4 : leng]))
     return keyBytes
 
 
@@ -193,21 +193,50 @@ def strToBt(s: str):
 
 def bt4ToHex(binary: str) -> str:
     mapping = {
-        "0000": "0", "0001": "1", "0010": "2", "0011": "3",
-        "0100": "4", "0101": "5", "0110": "6", "0111": "7",
-        "1000": "8", "1001": "9", "1010": "A", "1011": "B",
-        "1100": "C", "1101": "D", "1110": "E", "1111": "F",
+        "0000": "0",
+        "0001": "1",
+        "0010": "2",
+        "0011": "3",
+        "0100": "4",
+        "0101": "5",
+        "0110": "6",
+        "0111": "7",
+        "1000": "8",
+        "1001": "9",
+        "1010": "A",
+        "1011": "B",
+        "1100": "C",
+        "1101": "D",
+        "1110": "E",
+        "1111": "F",
     }
     return mapping[binary]
 
 
 def hexToBt4(hexch: str) -> str:
     mapping = {
-        "0": "0000", "1": "0001", "2": "0010", "3": "0011",
-        "4": "0100", "5": "0101", "6": "0110", "7": "0111",
-        "8": "1000", "9": "1001", "A": "1010", "B": "1011",
-        "C": "1100", "D": "1101", "E": "1110", "F": "1111",
-        "a": "1010", "b": "1011", "c": "1100", "d": "1101", "e": "1110", "f": "1111",
+        "0": "0000",
+        "1": "0001",
+        "2": "0010",
+        "3": "0011",
+        "4": "0100",
+        "5": "0101",
+        "6": "0110",
+        "7": "0111",
+        "8": "1000",
+        "9": "1001",
+        "A": "1010",
+        "B": "1011",
+        "C": "1100",
+        "D": "1101",
+        "E": "1110",
+        "F": "1111",
+        "a": "1010",
+        "b": "1011",
+        "c": "1100",
+        "d": "1101",
+        "e": "1110",
+        "f": "1111",
     }
     return mapping[hexch]
 
@@ -229,7 +258,7 @@ def byteToString(byteData):
 def bt64ToHex(byteData):
     hexs = []
     for i in range(16):
-        bt = "".join(str(bit) for bit in byteData[i * 4:i * 4 + 4])
+        bt = "".join(str(bit) for bit in byteData[i * 4 : i * 4 + 4])
         hexs.append(bt4ToHex(bt))
     return "".join(hexs)
 
@@ -322,37 +351,37 @@ def sBoxPermute(expandByte):
         [14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7],
         [0, 15, 7, 4, 14, 2, 13, 1, 10, 6, 12, 11, 9, 5, 3, 8],
         [4, 1, 14, 8, 13, 6, 2, 11, 15, 12, 9, 7, 3, 10, 5, 0],
-        [15, 12, 8, 2, 4, 9, 1, 7, 5, 11, 3, 14, 10, 0, 6, 13 ],
+        [15, 12, 8, 2, 4, 9, 1, 7, 5, 11, 3, 14, 10, 0, 6, 13],
     ]
     s2 = [
         [15, 1, 8, 14, 6, 11, 3, 4, 9, 7, 2, 13, 12, 0, 5, 10],
         [3, 13, 4, 7, 15, 2, 8, 14, 12, 0, 1, 10, 6, 9, 11, 5],
         [0, 14, 7, 11, 10, 4, 13, 1, 5, 8, 12, 6, 9, 3, 2, 15],
-        [13, 8, 10, 1, 3, 15, 4, 2, 11, 6, 7, 12, 0, 5, 14, 9 ],
+        [13, 8, 10, 1, 3, 15, 4, 2, 11, 6, 7, 12, 0, 5, 14, 9],
     ]
     s3 = [
         [10, 0, 9, 14, 6, 3, 15, 5, 1, 13, 12, 7, 11, 4, 2, 8],
         [13, 7, 0, 9, 3, 4, 6, 10, 2, 8, 5, 14, 12, 11, 15, 1],
         [13, 6, 4, 9, 8, 15, 3, 0, 11, 1, 2, 12, 5, 10, 14, 7],
-        [1, 10, 13, 0, 6, 9, 8, 7, 4, 15, 14, 3, 11, 5, 2, 12 ],
+        [1, 10, 13, 0, 6, 9, 8, 7, 4, 15, 14, 3, 11, 5, 2, 12],
     ]
     s4 = [
         [7, 13, 14, 3, 0, 6, 9, 10, 1, 2, 8, 5, 11, 12, 4, 15],
         [13, 8, 11, 5, 6, 15, 0, 3, 4, 7, 2, 12, 1, 10, 14, 9],
         [10, 6, 9, 0, 12, 11, 7, 13, 15, 1, 3, 14, 5, 2, 8, 4],
-        [3, 15, 0, 6, 10, 1, 13, 8, 9, 4, 5, 11, 12, 7, 2, 14 ],
+        [3, 15, 0, 6, 10, 1, 13, 8, 9, 4, 5, 11, 12, 7, 2, 14],
     ]
     s5 = [
         [2, 12, 4, 1, 7, 10, 11, 6, 8, 5, 3, 15, 13, 0, 14, 9],
         [14, 11, 2, 12, 4, 7, 13, 1, 5, 0, 15, 10, 3, 9, 8, 6],
         [4, 2, 1, 11, 10, 13, 7, 8, 15, 9, 12, 5, 6, 3, 0, 14],
-        [11, 8, 12, 7, 1, 14, 2, 13, 6, 15, 0, 9, 10, 4, 5, 3 ],
+        [11, 8, 12, 7, 1, 14, 2, 13, 6, 15, 0, 9, 10, 4, 5, 3],
     ]
     s6 = [
         [12, 1, 10, 15, 9, 2, 6, 8, 0, 13, 3, 4, 14, 7, 5, 11],
         [10, 15, 4, 2, 7, 12, 9, 5, 6, 1, 13, 14, 0, 11, 3, 8],
         [9, 14, 15, 5, 2, 8, 12, 3, 7, 0, 4, 10, 1, 13, 11, 6],
-        [4, 3, 2, 12, 9, 5, 15, 10, 11, 14, 1, 7, 6, 0, 8, 13 ],
+        [4, 3, 2, 12, 9, 5, 15, 10, 11, 14, 1, 7, 6, 0, 8, 13],
     ]
     s7 = [
         [4, 11, 2, 14, 15, 0, 8, 13, 3, 12, 9, 7, 5, 10, 6, 1],
@@ -370,10 +399,7 @@ def sBoxPermute(expandByte):
 
     for m in range(8):
         i = expandByte[m * 6 + 0] * 2 + expandByte[m * 6 + 5]
-        j = (expandByte[m * 6 + 1] * 8 +
-             expandByte[m * 6 + 2] * 4 +
-             expandByte[m * 6 + 3] * 2 +
-             expandByte[m * 6 + 4])
+        j = expandByte[m * 6 + 1] * 8 + expandByte[m * 6 + 2] * 4 + expandByte[m * 6 + 3] * 2 + expandByte[m * 6 + 4]
         val = sboxes[m][i][j]
         binary = getBoxBinary(val)
         sBoxByte[m * 4 + 0] = int(binary[0])
@@ -384,30 +410,131 @@ def sBoxPermute(expandByte):
 
 
 def pPermute(sBoxByte):
-    idx = [15, 6, 19, 20, 28, 11, 27, 16,
-           0, 14, 22, 25, 4, 17, 30, 9,
-           1, 7, 23, 13, 31, 26, 2, 8,
-           18, 12, 29, 5, 21, 10, 3, 24]
+    idx = [
+        15,
+        6,
+        19,
+        20,
+        28,
+        11,
+        27,
+        16,
+        0,
+        14,
+        22,
+        25,
+        4,
+        17,
+        30,
+        9,
+        1,
+        7,
+        23,
+        13,
+        31,
+        26,
+        2,
+        8,
+        18,
+        12,
+        29,
+        5,
+        21,
+        10,
+        3,
+        24,
+    ]
     return [sBoxByte[i] for i in idx]
 
 
 def finallyPermute(endByte):
-    idx = [39, 7, 47, 15, 55, 23, 63, 31,
-           38, 6, 46, 14, 54, 22, 62, 30,
-           37, 5, 45, 13, 53, 21, 61, 29,
-           36, 4, 44, 12, 52, 20, 60, 28,
-           35, 3, 43, 11, 51, 19, 59, 27,
-           34, 2, 42, 10, 50, 18, 58, 26,
-           33, 1, 41, 9, 49, 17, 57, 25,
-           32, 0, 40, 8, 48, 16, 56, 24]
+    idx = [
+        39,
+        7,
+        47,
+        15,
+        55,
+        23,
+        63,
+        31,
+        38,
+        6,
+        46,
+        14,
+        54,
+        22,
+        62,
+        30,
+        37,
+        5,
+        45,
+        13,
+        53,
+        21,
+        61,
+        29,
+        36,
+        4,
+        44,
+        12,
+        52,
+        20,
+        60,
+        28,
+        35,
+        3,
+        43,
+        11,
+        51,
+        19,
+        59,
+        27,
+        34,
+        2,
+        42,
+        10,
+        50,
+        18,
+        58,
+        26,
+        33,
+        1,
+        41,
+        9,
+        49,
+        17,
+        57,
+        25,
+        32,
+        0,
+        40,
+        8,
+        48,
+        16,
+        56,
+        24,
+    ]
     return [endByte[i] for i in idx]
 
 
 def getBoxBinary(i: int) -> str:
     mapping = {
-        0: "0000", 1: "0001", 2: "0010", 3: "0011", 4: "0100", 5: "0101",
-        6: "0110", 7: "0111", 8: "1000", 9: "1001", 10: "1010", 11: "1011",
-        12: "1100", 13: "1101", 14: "1110", 15: "1111",
+        0: "0000",
+        1: "0001",
+        2: "0010",
+        3: "0011",
+        4: "0100",
+        5: "0101",
+        6: "0110",
+        7: "0111",
+        8: "1000",
+        9: "1001",
+        10: "1010",
+        11: "1011",
+        12: "1100",
+        13: "1101",
+        14: "1110",
+        15: "1111",
     }
     return mapping[i]
 
@@ -431,26 +558,74 @@ def generateKeys(keyByte):
             key[27] = tempLeft
             key[55] = tempRight
         tempKey = [0] * 48
-        mapping = [13, 16, 10, 23, 0, 4, 2, 27,
-                   14, 5, 20, 9, 22, 18, 11, 3,
-                   25, 7, 15, 6, 26, 19, 12, 1,
-                   40, 51, 30, 36, 46, 54, 29, 39,
-                   50, 44, 32, 47, 43, 48, 38, 55,
-                   33, 52, 45, 41, 49, 35, 28, 31]
+        mapping = [
+            13,
+            16,
+            10,
+            23,
+            0,
+            4,
+            2,
+            27,
+            14,
+            5,
+            20,
+            9,
+            22,
+            18,
+            11,
+            3,
+            25,
+            7,
+            15,
+            6,
+            26,
+            19,
+            12,
+            1,
+            40,
+            51,
+            30,
+            36,
+            46,
+            54,
+            29,
+            39,
+            50,
+            44,
+            32,
+            47,
+            43,
+            48,
+            38,
+            55,
+            33,
+            52,
+            45,
+            41,
+            49,
+            35,
+            28,
+            31,
+        ]
         for m in range(48):
             tempKey[m] = key[mapping[m]]
         keys[i] = tempKey
     return keys
 
+
 def des(username, password, random):
-    enc_user = strEnc(username, random, '', '')
-    enc_pass = strEnc(password, random, '', '')
+    enc_user = strEnc(username, random, "", "")
+    enc_pass = strEnc(password, random, "", "")
     return enc_user, enc_pass
+
 
 def des_encrypt(decrypted_password):
     random = "OqxQ1Iea4njSROH/N06Tuw=="
-    return strEnc(decrypted_password, random, '', '')
+    return strEnc(decrypted_password, random, "", "")
+
+
 def des_decrypt(encrypted_password):
     """解密DES加密的密码"""
     random = "OqxQ1Iea4njSROH/N06Tuw=="
-    return strDec(encrypted_password, random, '', '')
+    return strDec(encrypted_password, random, "", "")
