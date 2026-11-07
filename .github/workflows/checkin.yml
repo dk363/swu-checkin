@@ -25,19 +25,19 @@ jobs:
           # - name: "账号3"
           #   username_secret: SWU_USERNAME_3
           #   password_secret: SWU_PASSWORD_3
-    
+
     name: 签到 - ${{ matrix.account.name }}
-    
+
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
-      
+
       - name: 设置 Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           cache: 'pip'
-      
+
       - name: 安装依赖
         run: |
           echo "========================================="
@@ -48,7 +48,7 @@ jobs:
           echo ""
           echo "✅ 依赖安装完成"
           echo ""
-      
+
       - name: 执行签到
         id: checkin
         env:
@@ -81,7 +81,7 @@ jobs:
           fi
           echo "========================================="
           echo ""
-          
+
           if [ -z "$ACTUAL_USERNAME" ] || [ -z "$ACTUAL_PASSWORD" ]; then
             echo "❌ 账号或密码未配置，跳过签到"
             echo "请在 GitHub Secrets 中配置："
@@ -93,43 +93,43 @@ jobs:
             echo "exit_code=1" >> "$GITHUB_OUTPUT"
             exit 1
           fi
-          
+
           # main() 对签到异常状态返回 1；关闭 errexit，确保仍能读取并解析结果
           set +e
           python -m swu_checkin.check_in > checkin_result.txt 2>&1
           exit_code=$?
           set -e
-          
+
           echo ""
           echo "========================================="
           echo "签到结果"
           echo "========================================="
           cat checkin_result.txt
           echo ""
-          
+
           # 提取返回码和消息
           result_line=$(cat checkin_result.txt | tail -1)
           status_code=$(echo "$result_line" | grep -oP '\[\K[0-9]+(?=\])')
           status_msg=$(echo "$result_line" | grep -oP '\] \K.*')
-          
+
           echo "status_code=$status_code" >> $GITHUB_OUTPUT
           echo "status_msg=$status_msg" >> $GITHUB_OUTPUT
           echo "full_result=$result_line" >> $GITHUB_OUTPUT
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
-          
+
           echo "========================================="
           echo "状态码: $status_code"
           echo "状态信息: $status_msg"
           echo "退出码: $exit_code"
           echo "========================================="
-          
+
           # 1=成功, 2=已签到；其余状态已在脚本内重试，仍失败才告警
           if [ "$status_code" != "1" ] && [ "$status_code" != "2" ]; then
             echo ""
             echo "⚠️  多次重试后仍异常，准备发送通知邮件"
             exit 1
           fi
-          
+
           echo ""
           echo "✅ 签到正常完成"
         continue-on-error: true
@@ -296,7 +296,7 @@ jobs:
           echo "========================================="
           echo "状态码: ${{ steps.checkin.outputs.status_code }}"
           echo "状态信息: ${{ steps.checkin.outputs.status_msg }}"
-          
+
           if [ "${{ steps.checkin.outputs.status_code }}" = "1" ]; then
             echo "✅ 签到成功"
           elif [ "${{ steps.checkin.outputs.status_code }}" = "2" ]; then

@@ -49,5 +49,6 @@ indent-style = "space"
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.7.0",
     "ruff>=0.17.4",
 ]
